@@ -1,46 +1,65 @@
 import streamlit as st
 import folium
-from streamlit_folium import st_folium
+import streamlit.components.v1 as components
+from componente_datos import obtener_vehiculos
 
-# Ejemplo de función para renderizar el mapa interactivo
-def mostrar_mapa_interactivo(lista_vehiculos):
-    # 1. Crear el mapa centrado en una ubicación inicial
-    m = folium.Map(location=[-33.45, -70.66], zoom_start=12)
+st.set_page_config(page_title="Gestión de Flota", layout="wide")
+st.title("Sistema de Gestión de Mantenimiento de Flota")
 
-    # 2. Agregar los vehículos como marcadores
-    for v in lista_vehiculos:
+# 1. Cargar la flota de vehículos POO desde el módulo de datos
+@st.cache_data
+def cargar_flota():
+    return obtener_vehiculos()
+
+vehiculos = cargar_flota()
+
+# 2. Panel Lateral de Evaluación
+st.sidebar.header("Evaluación de Mantenimiento")
+opciones = {f"{v.id} - {v.modelo}": v for v in vehiculos}
+seleccion_label = st.sidebar.selectbox("Selecciona un vehículo:", list(opciones.keys()))
+vehiculo_seleccionado = opciones[seleccion_label]
+
+st.sidebar.subheader("Detalles Técnicos")
+st.sidebar.write(f"**Identificador:** {vehiculo_seleccionado.id}")
+st.sidebar.write(f"**Modelo:** {vehiculo_seleccionado.modelo}")
+st.sidebar.write(f"**Tipo:** {type(vehiculo_seleccionado).__name__}")
+st.sidebar.write(f"**Kilometraje:** {vehiculo_seleccionado.kilometraje} km")
+
+# Evaluación polimórfica según la subclase
+if vehiculo_seleccionado.requiere_mantenimiento():
+    st.sidebar.error("Estado: REQUIERE TALLER")
+else:
+    st.sidebar.success("Estado: OPERATIVO")
+
+# 3. Visualización del Mapa
+col1, col2 = st.columns([2, 1])
+
+with col1:
+    st.subheader("Ubicación de Unidades")
+    m = folium.Map(location=[42.8467, -2.6716], zoom_start=13)
+
+    for v in vehiculos:
+        color_marker = "red" if v.requiere_mantenimiento() else "green"
+        popup_info = f"<b>{v.id}</b><br>Modelo: {v.modelo}<br>Tipo: {type(v).__name__}<br>KM: {v.kilometraje}"
+
         folium.Marker(
             location=[v.lat, v.lng],
-            popup=v.matricula,
-            tooltip=f"{v.modelo} ({v.matricula})",
-            # Guardamos la matrícula en el objeto para identificarlo al hacer clic
-            icon=folium.Icon(color="blue" if v.necesita_mantenimiento() else "green")
+            popup=popup_info,
+            tooltip=f"{v.id} ({v.modelo})",
+            icon=folium.Icon(color=color_marker, icon="car", prefix="fa")
         ).add_to(m)
 
-    # 3. Renderizar el mapa en Streamlit y capturar eventos de clic
-    map_data = st_folium(m, width=700, height=500)
+    # Renderizado HTML nativo para prevenir pantallas negras
+    mapa_html = m._repr_html_()
+    components.html(mapa_html, height=450, scrolling=False)
 
-    # 4. Capturar el clic en un marcador
-    if map_data and map_data.get("last_object_clicked"):
-        click_coords = map_data["last_object_clicked"]
-        lat_clic = click_coords["lat"]
-        lng_clic = click_coords["lng"]
+with col2:
+    st.subheader("Resumen de la Flota")
+    total_vehiculos = len(vehiculos)
+    en_taller = sum(1 for v in vehiculos if v.requiere_mantenimiento())
+    
+    st.metric(label="Total Vehículos", value=total_vehiculos)
+    st.metric(label="Requieren Taller", value=en_taller, delta_color="inverse")
 
-        # Buscar el objeto vehículo correspondiente a esas coordenadas
-        vehiculo_seleccionado = next(
-            (v for v in lista_vehiculos if abs(v.lat - lat_clic) < 0.0001 and abs(v.lng - lng_clic) < 0.0001),
-            None
-        )
-
-        # 5. Mostrar la evaluación del vehículo seleccionado
-        if vehiculo_seleccionado:
-            st.subheader(f"Vehículo Seleccionado: {vehiculo_seleccionado.matricula}")
-            st.write(f"Modelo: {vehiculo_seleccionado.modelo}")
-            st.write(f"Kilometraje: {vehiculo_seleccionado.kilometraje} km")
-
-            # Evaluación polimórfica llamando al método de tu clase POO
-            if vehiculo_seleccionado.necesita_mantenimiento():
-                st.error("⚠️ Estado: REQUIERE TALLER")
-            else:
-                st.success("✅ Estado: OPERATIVO")
+    
 
