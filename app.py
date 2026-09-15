@@ -3,63 +3,47 @@ import folium
 import streamlit.components.v1 as components
 from componente_datos import obtener_vehiculos
 
-st.set_page_config(page_title="Gestión de Flota", layout="wide")
-st.title("Sistema de Gestión de Mantenimiento de Flota")
+st.title("Panel de Despacho y Mantenimiento")
 
-# 1. Cargar la flota de vehículos POO desde el módulo de datos
-@st.cache_data
-def cargar_flota():
-    return obtener_vehiculos()
+# --- LOGIN BÁSICO ---
+# Creamos un estado de sesión para controlar si está logueado
+if "autenticado" not in st.session_state:
+    st.session_state.autenticado = False
 
-vehiculos = cargar_flota()
-
-# 2. Panel Lateral de Evaluación
-st.sidebar.header("Evaluación de Mantenimiento")
-opciones = {f"{v.id} - {v.modelo}": v for v in vehiculos}
-seleccion_label = st.sidebar.selectbox("Selecciona un vehículo:", list(opciones.keys()))
-vehiculo_seleccionado = opciones[seleccion_label]
-
-st.sidebar.subheader("Detalles Técnicos")
-st.sidebar.write(f"**Identificador:** {vehiculo_seleccionado.id}")
-st.sidebar.write(f"**Modelo:** {vehiculo_seleccionado.modelo}")
-st.sidebar.write(f"**Tipo:** {type(vehiculo_seleccionado).__name__}")
-st.sidebar.write(f"**Kilometraje:** {vehiculo_seleccionado.kilometraje} km")
-
-# Evaluación polimórfica según la subclase
-if vehiculo_seleccionado.requiere_mantenimiento():
-    st.sidebar.error("Estado: REQUIERE TALLER")
+if not st.session_state.autenticado:
+    st.subheader("Por favor, inicia sesión")
+    usuario = st.text_input("Usuario")
+    password = st.text_input("Contraseña", type="password")
+    
+    if st.button("Entrar"):
+        # Contraseña y usuario súper sencillos para un entorno escolar
+        if usuario == "admin" and password == "1234":
+            st.session_state.autenticado = True
+            st.rerun()
+        else:
+            st.error("Usuario o contraseña incorrectos")
 else:
-    st.sidebar.success("Estado: OPERATIVO")
+    # --- APLICACIÓN PRINCIPAL (Si ya inició sesión) ---
+    st.success("¡Bienvenido al sistema!")
+    if st.button("Cerrar sesión"):
+        st.session_state.autenticado = False
+        st.rerun()
 
-# 3. Visualización del Mapa
-col1, col2 = st.columns([2, 1])
-
-with col1:
-    st.subheader("Ubicación de Unidades")
+    st.write("Seguimiento y control de flota académica.")
+    
+    vehiculos = obtener_vehiculos()
     m = folium.Map(location=[42.8467, -2.6716], zoom_start=13)
 
     for v in vehiculos:
-        color_marker = "red" if v.requiere_mantenimiento() else "green"
-        popup_info = f"<b>{v.id}</b><br>Modelo: {v.modelo}<br>Tipo: {type(v).__name__}<br>KM: {v.kilometraje}"
-
+        color_marcador = "green" if v.estado == "Operativo" else "red"
+        texto_popup = f"<b>Placa:</b> {v.placa}<br><b>Tipo:</b> {v.detalles_especificos()}<br><b>Estado:</b> {v.estado}"
+        
         folium.Marker(
-            location=[v.lat, v.lng],
-            popup=popup_info,
-            tooltip=f"{v.id} ({v.modelo})",
-            icon=folium.Icon(color=color_marker, icon="car", prefix="fa")
+            location=[v.lat, v.lon],
+            popup=texto_popup,
+            icon=folium.Icon(color=color_marcador, icon="info-sign")
         ).add_to(m)
 
-    # Renderizado HTML nativo para prevenir pantallas negras
-    mapa_html = m._repr_html_()
-    components.html(mapa_html, height=450, scrolling=False)
-
-with col2:
-    st.subheader("Resumen de la Flota")
-    total_vehiculos = len(vehiculos)
-    en_taller = sum(1 for v in vehiculos if v.requiere_mantenimiento())
-    
-    st.metric(label="Total Vehículos", value=total_vehiculos)
-    st.metric(label="Requieren Taller", value=en_taller, delta_color="inverse")
+    components.html(m._repr_html_(), height=500)
 
     
-

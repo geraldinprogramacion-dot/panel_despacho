@@ -1,35 +1,37 @@
 from abc import ABC, abstractmethod
 
+# 1. Clase abstracta base (plantilla general)
 class Vehiculo(ABC):
-    def __init__(self, id_vehiculo, modelo, kilometraje, lat, lng):
-        self.id = id_vehiculo
+    def __init__(self, placa, modelo, estado, lat, lon):
+        self.placa = placa
         self.modelo = modelo
-        self.kilometraje = kilometraje
+        self.estado = estado  # "Operativo" o "En Mantenimiento"
         self.lat = lat
-        self.lng = lng
+        self.lon = lon
 
     @abstractmethod
-    def requiere_mantenimiento(self):
+    def detalles_especificos(self):
         pass
 
+# 2. Subclase Auto (Hereda de Vehiculo)
 class Auto(Vehiculo):
-    def requiere_mantenimiento(self):
-        # Un auto requiere mantenimiento si supera los 10,000 km
-        return self.kilometraje > 10000
+    def detalles_especificos(self):
+        return f"Auto Turístico - Modelo: {self.modelo}"
 
+# 3. Subclase Camion (Hereda de Vehiculo)
 class Camion(Vehiculo):
-    def requiere_mantenimiento(self):
-        # Un camión requiere mantenimiento si supera los 20,000 km
-        return self.kilometraje > 20000
+    def detalles_especificos(self):
+        return f"Camión de Carga Pesada - Modelo: {self.modelo}"
 
+# 4. Subclase Furgoneta (Hereda de Vehiculo)
 class Furgoneta(Vehiculo):
-    def requiere_mantenimiento(self):
-        # Una furgoneta requiere mantenimiento si supera los 15,000 km
-        return self.kilometraje > 15000
+    def detalles_especificos(self):
+        return f"Furgoneta de Reparto - Modelo: {self.modelo}"
 
+# 5. Función que devuelve la lista de objetos creados
 def obtener_vehiculos():
     return [
-        Auto("V-01", "Toyota Hilux", 12000, 42.8467, -2.6716),
-        Camion("V-02", "Renault Kangoo", 18500, 42.8520, -2.6800),
-        Furgoneta("V-03", "Ford Transit", 9500, 42.8400, -2.6650)
+        Auto("ABC-1234", "Toyota Corolla", "Operativo", 42.8467, -2.6716),
+        Camion("XYZ-9876", "Volvo FH", "En Mantenimiento", 42.8550, -2.6500),
+        Furgoneta("DEF-5678", "Mercedes Sprinter", "Operativo", 42.8400, -2.6800)
     ]
